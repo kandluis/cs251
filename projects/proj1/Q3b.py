@@ -22,7 +22,7 @@ def multisig_scriptSig(txin, txout, txin_scriptPubKey):
     # TODO: Complete this script to unlock the BTC that was locked in the
     # multisig transaction created in Exercise 3a.
     return [
-        # fill this in!
+        OP_0, cust1_sig, bank_sig
     ]
     ######################################################################
 
@@ -42,10 +42,10 @@ def send_from_multisig_transaction(amount_to_send, txid_to_spend, utxo_index,
 if __name__ == '__main__':
     ######################################################################
     # TODO: set these parameters correctly
-    amount_to_send = None # amount of BTC in the output you're splitting minus fee
+    amount_to_send = 0.00213379 - 0.0005 # amount of BTC in the output you're splitting minus fee
     txid_to_spend = (
-        'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-    utxo_index = None # index of the output you are spending, indices start at 0
+        '64176fa894373376276ca3a717c8e000d078417a4dabbe9f81ae2561e92dfa2f')
+    utxo_index = 0 # index of the output you are spending, indices start at 0
     ######################################################################
 
     txin_scriptPubKey = Q3a_txout_scriptPubKey
