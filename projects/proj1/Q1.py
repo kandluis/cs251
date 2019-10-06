@@ -11,7 +11,11 @@ def P2PKH_scriptPubKey(address):
     # TODO: Complete the standard scriptPubKey implementation for a
     # PayToPublicKeyHash transaction
     return [
-        OP_DUP, OP_HASH160, address, OP_EQUALVERIFY, OP_CHECKSIG
+        OP_DUP,
+        OP_HASH160,
+        address,
+        OP_EQUALVERIFY,
+        OP_CHECKSIG
     ]
     ######################################################################
 
@@ -23,7 +27,8 @@ def P2PKH_scriptSig(txin, txout, txin_scriptPubKey, private_key, public_key):
     # TODO: Complete this script to unlock the BTC that was sent to you
     # in the PayToPublicKeyHash transaction.
     return [
-        signature, public_key
+        signature,
+        public_key
     ]
     ######################################################################
 

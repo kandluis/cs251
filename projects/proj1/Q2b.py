@@ -21,7 +21,8 @@ txin_scriptPubKey = Q2a_txout_scriptPubKey
 # TODO: implement the scriptSig for redeeming the transaction created
 # in  Exercise 2a.
 txin_scriptSig = [
-        2659, -2080
+        2659,
+        -2080
 ]
 ######################################################################
 txout_scriptPubKey = P2PKH_scriptPubKey(faucet_address)

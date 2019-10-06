@@ -10,7 +10,13 @@ from Q1 import send_from_P2PKH_transaction
 ######################################################################
 # TODO: Complete the scriptPubKey implementation for Exercise 2
 Q2a_txout_scriptPubKey = [
-        OP_2DUP, OP_ADD, 579, OP_EQUALVERIFY, OP_SUB, 4739, OP_EQUAL
+        OP_2DUP,
+        OP_ADD,
+        579,
+        OP_EQUALVERIFY,
+        OP_SUB,
+        4739,
+        OP_EQUAL
     ]
 ######################################################################
 
