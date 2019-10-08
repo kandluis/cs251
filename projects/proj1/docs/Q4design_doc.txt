@@ -11,4 +11,38 @@
 #            Why can't this be solved with a simple 1-of-2 multisig? 
 #
 
+The most helpful way to look at this is to start broadly and then narrow down into the specifics. First, what is an atomic swap across blockchains? Generally speaking, it must have the following properties:
 
+1. Neither Alice nor Bob need to trust each other.
+2. Neither Alice nor Bob can cheat the other.
+
+We can achieve these properties in the following way. Broadly speaking, an atomic swap will require the production of four block-chain transaction. We have (1) SEND_{A->B} (a transaction sending coins from Alice to Bob on Alice's blockchain), (2) SEND_{B->A} (a transaction sending coins from Bob to Alice on Bob's blockchain), RETURN_{B->A} (a time-locked transaction reversing tx (1)), and RETURN_{A->B} (a time-locked transaction reversing tx (2)).
+
+Since we're doing a swap, Tx (1) and (3) are obvious. These are simply the transactions sending coins from Alice to Bob and vice-versa. However, it would be a mistake to simply consider (1) and (3), since we can immediately see that one of the two transactions must be published first (which is bad even if we use a 1-of-2 multisig), or signed by both parties first (if we try to use a 2-of-2 multisig). As soon as this is done, the second transaction can either be stolen (in the 1-of-2 multisig scenario, since the recipient of the first transaction could race against the recipient of the second to claim it) or forever locked (in the 2-of-2 multisig, since the recipient of the first transaction can simply refuse to sign). How can we possible prevent this?
+
+To solve this problem, we must make use of a "secret" that can be used to unlock the funds. The "secret" belongs to the first sender (Alice in our case). What we do is we lock both transaction (1) and (3) so that the funds can be spent if the receiver of the transaction (Bob in Tx (1) and Alice in Tx (2)) has the "secret" (in other words, it requires both the receiver's signature and the secret). We can do this easily (without revealing the secret) by including the hash(secret) in the ScriptPubKey and verifying it is equal to the hashed version of the value provided by the ScriptSig. Note that Bob can create (3) without knowing the actual secret, since he only needs the hash(secret). We also, of course, verify that the signature provided validate under the receiver's public key. In bitcoin script, this looks a little like this:
+
+OP_HASH160
+<hash(secret)>
+OP_EQUALVERIFY
+<pk_recipient>
+OP_CHECKSIG
+
+Now both parties can publish their transactions to their block-chains (without allowing either party to redeem it immediately and thereby steal the coins). In this way, both parties can now confirm that the money is being sent to them (and the correct value). Now, Alice is the only one that knows the secret, so she can redeem Tx (3) easily. However, as soon as she does this, she reveals the secret (it must be included as part of the ScriptSig she used to redeem Tx (3)), and thefore Bob can now use the secret so he can also redeem his funds. Note that Alice cannot steal the Tx (1) since only Bob can sign it, and Bob cannot steal Tx (3) since only Alice can sign it. 
+
+However, this doesn't solve the problem entirely. We still have the issue that someone must publish their Tx first (either (1) or (3)), and as soon as the transaction is published, the sender can NOT retrieve their funds. The opposite party can then simply refuse to collect the funds, and thereby the coins are forfeited by both (which is not a good result). As such, neither party will want to publish Tx (1) or (3), since they are in fear that the opposite party will leave the funds locked by refusing to publish their transaction. This is where Tx (2) and Tx (4) come into place. These are Txs that spend (use up) transaction (1) and (3) by sending the funds back to the sender. However, this should only be possible if (1) the receiver has refused to uphold their end of the deal. As such, we must make these txn be time-locked (can only be used after some specified period of time) and it must be the case that their input (Tx (1) or (3)) is only spend-able if *both* parties have signed. This means our ScriptPubKey for (1) and (3) must now looks something like this:
+
+IF <we're trying to redeem our funds, as described first>
+  OP_HASH160
+  <hash(secret)>
+  OP_EQUALVERIFY
+ELSE <we're trying to refund ourselves, as decribed above>
+  <pk_sender>
+  OP_CHECKSIGVERIFY
+ENDIF
+<pk_recipient>
+OP_CHECKSIG
+
+This approach solves two problems. The first is that Alice asks Bob to first sign tx (2) (this basically is a transaction returning Alice her funds, but it can only be used at some point in the future), and only AFTER Bob signs it will Alice publish Tx (1), since now Alice knows that in the event Bob doesn't publish tx (3), she will be able to retrieve her funds. Similarly, Bob asks Alice to sign tx (4) so he can retrieve his funds in the event that Alice doesn't reveal the secret. We must be careful to make sure that Bob's locktime is shorter than Alice. If it's not, than Alice can simply wait for her locktime to expire, refund her own funds, and then reveal the secret and retrieve Bob's funds (thereby stealing from Bob). Even though the secret has been revealed, Bob will no longer be able to retrieve his funds since Alice has already refunded them.
+
+With the above process, we can now carry out an atomic swap.
