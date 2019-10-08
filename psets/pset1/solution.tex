@@ -239,11 +239,11 @@ As such, we have that $H'$ is not proof-of-work secure.
   \item
     The proof requires $(k-1)$ block headers (the block including the transaction up to (but not including) the current head header). Each block header in Bitcoin is $80$ bytes. It also requires approximately $\log_2 n$ sibling hashes, where each hash is $256$ bits or $32$ bytes. As such, the total size of the proof should be approximately:
     \[
-      (k-1)*80 + 32*\log_2 n
+      80*(k-1) + 32*\log_2 n
     \]
     Plugging in $k = 6$ and $n = 1024$, we have:
     \[
-      (k-1)*80 + 32*\log_2 n = (6-1)*80 + 32 * \log_2 1024 = 400 + 320 = 720 \text{ bytes }
+      80*(k-1) + 32*\log_2 n = 80*(6-1) + 32 * \log_2 1024 = 400 + 320 = 720 \text{ bytes }
     \]
     So overall, the proof size is less than $1kB$.
 
@@ -270,7 +270,7 @@ As such, we have that $H'$ is not proof-of-work secure.
     We now have sufficient information to provide an algorithm for Alice to know which block headers she must send to Bob in order for Bob to verify his transactions. In fact, Alice must provide the following:
     \begin{itemize}
       \item The sibling hashes along the Merkle branch containing Tx (labeled).
-      \item The block headers as specified by the algorithm described below.
+      \item The block headers as specified by the algorithm described below (each block header is 80 + 32 = 112 bytes).
     \end{itemize}
 
     The algorithm to determine which block headers are needed is as follows. Let $n_h$ the the block number of the current head, and $n_{tx}$ the block number of the transaction block.
@@ -297,7 +297,7 @@ As such, we have that $H'$ is not proof-of-work secure.
 
     As such, if in $\log_2 k$ we can force one bit to match (in the worst case), and there are at most $\log_2 n$ bits that differ, we have that the total number of steps in the algorithm is $O(\log_2^2 k)$. As such, the worst-case proof size in bytes is:
     \[
-      \underbrace{O(\log_2^2 k)}_{\text{header}} + \underbrace{O(\log_2 n)}_{\text{Merkel tree proof}}
+      \underbrace{112*O(\log_2^2 k)}_{\text{header}} + \underbrace{32 * \log_2 n}_{\text{Merkel tree proof}}
     \]
 \end{enumerate}
 \end{solution}
