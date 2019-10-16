@@ -1,0 +1,140 @@
+\documentclass[12pt]{exam}
+
+\usepackage[utf8]{inputenc}  % For UTF8 source encoding.
+\usepackage{amsmath}  % For displaying math equations.
+\usepackage{amsfonts} % For mathematical fonts (like \mathbb{E}!).
+\usepackage{upgreek}  % For upright Greek letters, such as \upvarphi.
+\usepackage{wasysym}  % For additional glyphs (like \smiley!).
+\usepackage{mathrsfs} % For script text (hash families and universes).
+\usepackage{enumitem}
+\usepackage{graphicx}
+% For document margins.
+\usepackage[left=.8in, right=.8in, top=1in, bottom=1in]{geometry}
+\usepackage{lastpage} % For a reference to the number of pages.
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{pdfpages}
+
+% TODO: Enter your name here :)
+\newcommand*{\authorname}{Luis A. Perez}
+
+\newcommand*{\duedate}{Monday, October 21st}
+\newcommand*{\duetime}{11:59 pm}
+
+% Fancy headers and footers
+\headrule
+\firstpageheader{CS 251}{Assignment 2 \\ }{Due: \duedate\\at \duetime}
+\runningheader{CS 251}{Assignment 2}{\authorname}
+\footer{}{\footnotesize{Page \thepage\ of \pageref{LastPage}}}{}
+
+% Exam questions.
+\newcommand{\Q}[1]{\question{\large{\textbf{#1}}}}
+\qformat{}  % Remove formatting from exam questions.
+
+% Useful macro commands.
+\newcommand*{\bigtheta}[1]{\Theta\left( #1 \right)}
+\newcommand*{\bigo}[1]{O \left( #1 \right)}
+\newcommand*{\bigomega}[1]{\Omega \left( #1 \right)}
+\newcommand*{\prob}[1]{\text{Pr} \left[ #1 \right]}
+\newcommand*{\ex}[1]{\text{E} \left[ #1 \right]}
+\newcommand*{\var}[1]{\text{Var} \left[ #1 \right]}
+
+\newcommand*{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand*{\HH}{\mathscr{H}}   % Family of hash functions.
+\newcommand*{\UU}{\mathscr{U}}   % Universe.
+\newcommand*{\eps}{\varepsilon}  % Epsilon.
+
+
+% Custom formatting for problem parts.
+\renewcommand{\thepartno}{\roman{partno}}
+\renewcommand{\partlabel}{\thepartno.}
+
+% Framed answers.
+\newcommand{\answerbox}[1]{
+\begin{framed}
+\hspace{\fill}
+\vspace{#1}
+\end{framed}}
+
+\printanswers
+
+\setlength\answerlinelength{2in} \setlength\answerskip{0.3in}
+
+\begin{document}
+\title{CS 251 Assignment 2}
+\author{\authorname}
+\date{}
+\maketitle
+\thispagestyle{headandfoot}
+\setcounter{MaxMatrixCols}{15}
+
+\begin{questions}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\Q{Problem 1}
+\begin{solution}
+  \begin{enumerate}[label=\textbf{\alph*.}]
+    \item The block-chain will undergo a fork. The miners running implementation A will accept the transaction as valid, and since they own 80\% of the mining power, they will simply continue etending this chain with the invalid transaction. The miners with implementation B however, will always see this longer chain as invalid, so they will simply continue working on the shorter (but valid) chain which does not contain the double spend.
+    \item If the situation were reversed, we would not have a fork. Since only 20\% of the mining power would consider the chain with the double spend to be valid, we would expect that eventually the chain without the invalid transaction would win out, and all miner (even those what wanted to accepted the invalid transaction) would switch to the valid chain.
+
+    However, the 20\% of miners would always have this double spend transaction which they are unable to put into a block (to have it be successfully permenantly accepted into the chain). You'd hope they would eventually notice this, and fix their software.
+  \end{enumerate}
+\end{solution}
+
+\newpage
+\Q{Problem 2}
+\begin{solution}
+\end{solution}
+  \begin{enumerate}[label=\textbf{\alph*.}]
+    \item Assuming 1 block every 10 minutes, we have 6 blocks/hour, which equates to roughly 75BTC/hour or US\$450,000/hour (using 1BTC = US\$6000). If we assume this entire reward is spent on electricity, at US\$0.05/kWH, we'd be using 9,000,000 kWH in one hour.
+    \item With a difficulty of $D = 2^{75}$, we'd expect it to take $2^{75}$ hashes to solve a single block, which means in the span of an hour (to solve 6 blocks) we'd need approximately $6*2^{75}$ hashes. At $18*10^{12}$ hashes/sec, this would take 12,592,977,287.7 (12.5B) seconds or 3,498,049.24657 (3.5M) hours on a single Antminer S9 Hydro, consuming a total of 5,946,683.71917 (6M) kWH. 
+    \item The primary reason is that miners to to be incentized to make a profit (so it is unreasonable to assume the entirety of the bitcoin reward is spent on electricity costs). 
+  \end{enumerate}
+
+\newpage
+\Q{Problem 3}
+\begin{solution}
+  When an honest miner is aware of two or more chains with the same difficulty, it will randomly pick one to work on.
+
+  TODO
+\end{solution}
+
+\newpage
+\Q{Problem 4}
+\begin{solution}
+  \begin{enumerate}[label=\textbf{\alph*.}]
+    \item
+      We can simply take the expected fraction of winnings the pool achieves ($\alpha$) and multiply it by the proportion of power the partipant provides to the pool $\frac{\beta}{\alpha}$. This will give us the expected fraction of overall mining rewards the miner will hear.
+      \[
+        \underbrace{\alpha}_{\text{Pool winnings}} \cdot \underbrace{\frac{\beta}{\alpha}}_{\text{Share of winnings}} = \underbrace{\beta}_{\text{Honest miner winnings}}
+      \]
+    \item
+      We follow the same approach as above, however, using modified values. In this case, the expected fraction of overall mining rewards earned by the pool is $\frac{\alpha - \beta}{1 - \beta}$, while the share of work done by the miner is still $\frac{\beta}{\alpha}$.
+      \[
+         \underbrace{\frac{\alpha - \beta}{1-\beta}}_{\text{Pool winnings without miner helping}} \cdot \underbrace{\frac{\beta}{\alpha}}_{\text{Share of winnings}} = \underbrace{\frac{\beta(\alpha - \beta)}{{\alpha(1-\beta)}}}_{\text{Honest miner winnings}}
+      \]
+  \end{enumerate}
+\end{solution}
+\end{questions}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
