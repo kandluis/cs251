@@ -74,6 +74,7 @@ var abi = [
 		"type": "function"
 	}
 ];
+
 // ============================================================
 abiDecoder.addABI(abi);
 // call abiDecoder.decodeMethod to use this - see 'getAllFunctionCalls' for more
@@ -82,7 +83,7 @@ abiDecoder.addABI(abi);
 var BlockchainSplitwiseContractSpec = web3.eth.contract(abi);
 
 // This is the address of the contract you want to connect to; copy this from Remix
-var contractAddress = '0x32b6804ba85C9EA6F73a317f587FC5b0B41CDf38'
+var contractAddress = '0x9ae5520705E21E1cAD42fcdCe42810a39F373DBE'
 
 var BlockchainSplitwise = BlockchainSplitwiseContractSpec.at(contractAddress)
 
