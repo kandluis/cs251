@@ -11,7 +11,7 @@ contract BlockchainSplitwise {
     // from creditors to debt.
     // For example, debts[Alice][Bob] = 10 means that
     // Alice owes Bob 10.
-    mapping(address=>mapping(address=>Debt)) all_debts;
+    mapping(address=>mapping(address=>Debt)) internal all_debts;
     
     // Looks up the total amount of debt that debtor owes the creditor.
     function lookup(address debtor, address creditor) public view returns (uint32 ret) {
@@ -29,6 +29,9 @@ contract BlockchainSplitwise {
     //    2. min_on_cycle must be the minimum on the cycle.
     function add_IOU(address creditor, uint32 amount,  address[] memory path, uint32 min_on_cycle) public {
         address debtor = msg.sender;
+        
+        require(debtor != creditor, "Creditor cannot be creditor.");
+        
         Debt storage iou = all_debts[debtor][creditor];  // assigns a reference
         
         // Check for overflow.
