@@ -1,0 +1,18 @@
+
+STATE CHANNEL BATTLESHIP DESIGN DOC
+
+Your design doc doesn't need to be longer than 3 pages. This is a way for you
+to explain your implementation to us to ensure you get the points you deserve.
+In your design doc, you should aim to answer the following questions:
+
+1. What scheme did you came up with for the communication between two players
+during the game? What pieces of information do users send to one another and
+explain why each are necessary to prevent malicious behaviors.
+
+2. For each of the bullet points from Implementation Requirements section that
+you addressed in your code, what was your strategy in preventing this problem?
+How do you prevent against these attacks?
+
+3. Are there other defenses that you implemented in your code against malicious
+behaviors that weren't mentioned in the spec? Were there any attack scenarios
+that you couldn't defend against?
