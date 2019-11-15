@@ -8,7 +8,13 @@ include "./mimc.circom";
  *
  */
 template IfThenElse() {
-    // TODO: complete this circuit.
+    signal input condition;
+    signal input true_value;
+    signal input false_value;
+    signal output out;
+
+    // TODO
+    // Hint: You will need a helper signal...
 }
 
 /*
@@ -19,7 +25,13 @@ template IfThenElse() {
  * It enforces that `s` is 0 or 1.
  */
 template SelectiveSwitch() {
-    // TODO: complete this circuit.
+    signal input in0;
+    signal input in1;
+    signal input s;
+    signal output out0;
+    signal output out1;
+
+    // TODO
 }
 
 /*
@@ -36,5 +48,11 @@ template SelectiveSwitch() {
  *       path, casted to string-represented integers ("0" or "1").
  */
 template Spend(depth) {
-    // TODO: complete this circuit.
+    signal input digest;
+    signal input nullifier;
+    signal private input nonce;
+    signal private input sibling[depth];
+    signal private input direction[depth];
+
+    // TODO
 }

@@ -75,10 +75,8 @@ Arguments:
  *       path, casted to string-represented integers ("0" or "1").
  */
 function computeInput(depth, transcript, nullifier) {
-    //TODO: Complete this function.
-    
-    let input = {};
-    return input;
+    // TODO
+    return {};
 }
 
 module.exports = { computeInput };
