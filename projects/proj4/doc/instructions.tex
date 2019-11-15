@@ -1,0 +1,252 @@
+\documentclass[12pt]{article}
+
+\usepackage[svgnames]{xcolor}
+
+\usepackage{fancyhdr, graphicx, hyperref, enumitem, menukeys, titlesec, comment,
+xspace, listings, tikz, amsmath, multicol, tcolorbox}
+
+\usepackage{booktabs}% http://ctan.org/pkg/booktabs
+\newcommand{\tabitem}{~~\llap{\textbullet}~~}
+
+\hypersetup{colorlinks=true,allcolors={blue}}
+\urlstyle{rm}
+
+\titlespacing*{\section}{0pt}{1.5ex}{0.5ex}
+
+\usepackage[margin=1in]{geometry}
+
+\setlength{\parskip}{0.75\baselineskip}
+\setlength{\parindent}{0 pt}
+\setlength{\headheight}{15 pt}
+
+\newcommand{\typing}[1]{\fbox{\tt #1}}
+
+\usepackage{microtype}
+
+\newcommand{\whystar}[1]{\begin{tcolorbox}[colback=DarkBlue!8]
+\raisebox{0.1em}{\ensuremath{\star}}\emph{Why am I doing this? }\xspace #1
+
+\end{tcolorbox}}
+
+\newcommand{\deliverable}[1]{\begin{tcolorbox}[colback=Gold!8]
+\emph{Deliverable:}\xspace #1
+
+\end{tcolorbox}}
+
+
+\begin{document}
+
+\newcommand{\nullifier}{\ensuremath{\mathsf{nullifier}}}
+\newcommand{\nonce}{\ensuremath{\mathsf{nonce}}}
+\newcommand{\digest}{\ensuremath{\mathsf{digest}}}
+\newcommand{\commitment}{\ensuremath{\mathsf{commitment}}}
+
+\newlength{\boxwidth}
+\setlength{\boxwidth}{\textwidth}
+\addtolength{\boxwidth}{-2cm}
+\framebox[\textwidth]{
+\begin{minipage}[t]{\boxwidth}
+{\bf CS251: Cryptocurrencies and Blockchain Technologies \hfill Fall 2019}  \\[-0.3cm]
+\begin{center} {\huge Programming Project \#4} \end{center}
+Due: 11:59pm on Fri., {\bf Nov. 22, 2019} \\
+Submit via Gradescope code: {\bf MG7EP3}
+\end{minipage}}
+
+\vspace{\baselineskip}
+
+In this lab you'll learn about
+\begin{itemize}
+  \item \texttt{circom}, a tool for describing arithmetic circuits, and
+  \item \texttt{snarkjs}, a tool for generating and verifying zk-SNARKs of
+    circuit satisfaction.
+\end{itemize}
+You'll use this knowledge to explore the implementation of \textit{private
+transactions} by:
+\begin{itemize}
+  \item crafting a simple version of the Zcash shielded spend circuit, and
+  \item generating a proof of validity for a Zcash shielded spend.
+\end{itemize}
+
+\section{Setup}
+
+To get your environment set up, do the following:
+
+\begin{enumerate}
+  \item Install \texttt{nodejs} and \texttt{npm}.
+  \item Install \texttt{snarkjs} (\typing{npm install -g snarkjs}).
+  \item Install our fork of \texttt{circom} (\typing{npm install -g
+    alex-ozdemir/circom\#cs251}).
+  \item Install the \texttt{mocha test runner} (\typing{npm install -g mocha}).
+  \item Download and unzip the starter code.
+  \item Run \typing{npm install} within the resulting folder.
+  \item Run \typing{npm test} and verify that most of the tests fail, but not
+    because of missing dependencies.
+\end{enumerate}
+
+\section{Learning About \texttt{circom}}
+
+First, follow the Iden3 \texttt{circom} tutorial at
+\url{https://iden3.io/blog/circom-and-snarkjs-tutorial2.html}. You can stop
+after the ``Verifying the proof'' section.
+
+Then, read our example circuits in \texttt{circuits/example.circom} and answer
+the questions in \texttt{artifacts/writeup.md}.
+
+\deliverable{\texttt{artifacts/writeup.md}}
+
+Then, demonstrate your knowledge of \texttt{circom} and \texttt{snarkjs} by
+creating a proof that $7 \times 17 \times 19 = 2261$ (using the
+\texttt{SmallOddFactors} circuit). Store the verifier key in
+\texttt{artifacts/verifier\_key\_factor.json} and the proof in
+\texttt{artifacts/proof\_factor.json}.
+\deliverable{%
+
+\texttt{artifacts/verifier\_key\_factor.json},
+\texttt{artifacts/proof\_factor.json}
+}
+
+
+\section{A Switching Circuit}
+
+\subsection{IfThenElse}
+
+The \texttt{IfThenElse} circuit (located in \texttt{circuits/spend.circom})
+verifies the correct evaluation of a conditional expression.
+It has a single
+output, \texttt{out} and 3 inputs:
+\begin{itemize}
+  \item \texttt{condition}, which should be 0 or 1,
+  \item \texttt{true\_value}, which \texttt{out} will be equal to if
+    \texttt{condition} is 1, and
+  \item \texttt{false\_value}, which \texttt{out} will be equal to if
+    \texttt{condition} is 0.
+\end{itemize}
+
+\texttt{IfThenElse} additionally enforces that \texttt{condition} is indeed 0 or
+1.
+
+Implement \texttt{IfThenElse}.
+\deliverable{\texttt{IfThenElse}}
+
+\subsection{SelectiveSwitch}
+
+The \texttt{SelectiveSwitch} takes two inputs and produces two outputs, flipping
+the order if a third input is 1.
+
+Implement \texttt{SelectiveSwitch}, making use of your \texttt{IfThenElse}
+circuit.
+\deliverable{\texttt{SelectiveSwitch}}
+
+\section{A Spend Circuit}
+
+We're going to implement shielded spend verification for a simple version of
+ZCash that handles only whole coins.
+
+In our version of Zcash, users can engage in normal transactions using the
+bitcoin protocol, but have the additional option to use the \textit{shielded
+pool} to anonymize their coins.
+
+The shielded pool contains \textit{commitments} to coins, which in our case will
+be hashes of a \textit{nullifier} and a \textit{nonce}:
+\[
+  \commitment = H(\nullifier, \nonce)
+\]
+
+The pool is append-only and is summarized by an append-only Merkle tree whose
+leaves at the commitments, in order of creation.%
+\footnote{The tree has fixed depth and empty leaves are taken to have a value of
+0 for the purpose of computing the hash of the tree}
+To convert a normal coin to a shielded coin, one
+chooses a large, random, (\nullifier, \nonce) pair, spends the normal coin, and
+publishes the \commitment\ corresponding the nullifier and nonce. At this point,
+all network participants update their Merkle trees to include the new
+commitment. The commitment, and its location in the Merkle tree, are public, but
+the nullifier and nonce are secret.
+
+The interesting part (the part you'll implement) is the spend. One could
+spend the shielded coin by revealing the $(\nullifier, \nonce)$ pair,
+proving to the network that the corresponding \commitment\ is in the shielded
+ool, and having the network check that you haven't already spent this coin.
+However, this way of spending reveals a direction link between the shielded
+coin's creation and spend---violating privacy.
+
+What you'll do instead is craft an arithmetic circuit for verifying that a
+$(\nullifier, \nonce)$ pair corresponds to a valid commitment in the Merkle
+tree. You'll then reveal the \nullifier\ publicly (allowing everyone to verify
+that this nullifier hasn't been spent already), and use a SNARK to prove the
+existence of a \nonce\ such that the corresponding \commitment\ is in the Merkle
+tree, in zero-knowledge. The inputs to the circuit are thus:
+\begin{itemize}
+  \item the Merkle digest (public),
+  \item the nullifier (public),
+  \item the nonce (private), and
+  \item the Merkle path---a list of direction, hash pairs (private)
+\end{itemize}
+
+You should implement the verification circuit, \texttt{Spend}, in
+\texttt{circuits/spend.circom}.
+
+For the commitment and Merkle hash function, use the \texttt{Mimc2} circuit
+which has been included into the file. You should make use of your
+\texttt{SelectiveSwitch} circuit to handle the \texttt{direction}s properly.
+
+\deliverable{\texttt{Spend}}
+
+\section{Computing the Spend Circuit Input}
+
+The only task that remains is writing a program that computes the Merkle path
+for a given nullifier/coin.
+
+Implement this by implementing the \texttt{computeInput} function in
+\texttt{src/compute\_spend\_input.js}. This function takes the following inputs:
+\begin{itemize}
+  \item \texttt{depth}: the depth of the Merkle tree for the shielded pool.
+  \item \texttt{transactions}: a list of transactions. Some are created by you,
+    and are an array of two elements (the \nullifier\ and \nonce). Others were
+    not created by you and are an array of a single value---the \commitment.
+  \item \texttt{nullifier}: the nullifier to compute the circuit inputs for.
+\end{itemize}
+The function should return a JSON object suitable as input to the
+\texttt{Spend} circuit.
+
+To assist you, we've provided a \texttt{SparseMerkleTree} class, which you'll
+find in \texttt{src/sparse\_merkle\_tree.js}.
+
+For the commitment hash-function, use \texttt{mimc2}, which has been included
+into the file.
+
+\deliverable{%
+\texttt{src/compute\_spend\_input.js}
+}
+
+\section{Proving a Spend}
+
+Finally, use your input computer, \texttt{circom}, and \texttt{snarkjs} to
+create a SNARK proving the presence of the \nullifier\ ``10137284576094'' in
+Merkle tree of depth 10 corresponding to the transcript
+\texttt{test/compute\_spend\_input/transcript3.txt}. Use a depth of 10 (you'll
+find a depth-10 instantiation of your \texttt{Spend} circuit in
+\texttt{test/circuits/spend10.circom}), and place your verifier key in
+\texttt{artifacts/verifier\_key\_spend.json} and your proof in
+\texttt{artifacts/proof\_spend.json}.
+\deliverable{%
+\texttt{artifacts/verifier\_key\_spend.json},
+\texttt{artifacts/proof\_spend.json}
+}
+
+\section{Testing}
+You can, of course, check your proofs using \texttt{snarkjs}.
+
+We've also provided a few unit tests for the various components of your system,
+which can be run using \typing{npm test}. \textbf{They are not exhaustive}.
+
+You can also upload your solution to Gradescope to run it against our autograder. This will reveal what your score will be for the project. You can upload as many times as you want.
+
+\section{Debugging Tips}
+Your version of \texttt{circom} supports the \texttt{log} (1 argument) function,
+which prints its argument.
+
+\section{Submission}
+Please upload a compressed file that contains all of your code files and write-up document to Gradescope. Do not include your npm modules directory for this project.
+
+\end{document}
