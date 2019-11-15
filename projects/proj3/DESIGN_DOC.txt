@@ -1,6 +1,106 @@
 
 STATE CHANNEL BATTLESHIP DESIGN DOC
 
+# Goal
+
+The purpose of this document is to summarize the overall design of our Battleship game between two players. We aim to make a game where players cannot cheat. We achieve this by making use of the Ethereum block-chain to provide a single-consistent view of the state of the board between any two players. We outline possible attacks and how they are prevented in the following sections of the document.
+
+A secondary goal of our design is to minimize the amount of fees (cost) of playing the game. We do this by proposing a mechanism through which players can play the game almost entirely off-chain, with honest players requiring at most three ETH transactions for successful gameplay.
+
+# Detailed Design
+
+We now describe the details of our secure design for this Battleship game. We break this section up into roughly three parts following a typical game progression.
+
+  - Stage 1: Game initialization
+  - Stage 2: Exchanging moves
+  - Stage 3: Game conlusion
+
+## Game Initialization
+
+We discuss how a game is initialized, focusing on the case where both players are playing honestly. In this case, the following steps occur. Player A makes a call to the contract with a proposed game. The player provides the address of the opponenet as well as a tentative ante amount. Since we only support one concurrent game per player, this initial proposal will lead to the creation of a game with a unique game id, and we store a mapping from player addresses to this unique game id (both for the player and opponent). Note that this design means that we don't allow a single player to play multiple games, even against different opponents. A single address is ever only directly mapped to a single game, so a player can only ever participate in one game at a time. This restriction is strictly enforced by the contract and any player attempting to start or join multiple games will be rejected.
+
+Player B then makes a similar initialization call to the contract. An honest Player B would provide Player's A address to the contract, and provide their proposed ante (which is non-zero). Both of these conditions are strictly enforced by the contract. If the ante amounts proposed by Player B is greater than than of Player A, the difference is refunded to Player B. Similarly, if Player B is smaller, then the difference is refunded to Player A. No refund occurs in the case where both players propose the same ante. Once this is settled, the game is marked as initialized and the ante amount from each player is stored in the contract (and held until completion).
+
+### Possible Attacks on Initialization
+
+We now discuss a short list of possible attacks on initialization, and how we address these attacks with our design.
+
+#### Player A Proposes a Game But Player B Does not Reciprocate
+
+This is not necessarily a malicious attack on the part of Player B (it's possible they simply are not willing or interested in playing Player A, for example, if they think they will lose). Nonetheless, Player A has now locked-up a non-zero amount of Ether in the contract. In order to address this concern, we provide Player A with the option to remove any games that have not yet started using the `resign_uninitialized_game` contract function. This function verifies that the game is an un-initialized game (eg, Player B has not responded), and allows either player A or player B to delete the proposed game (and refunds the ante to Player A). 
+
+This additional functionality does not open up any new opportunities for abuse. We guarantee that only the players involved in the game can cancel It's possible that 
+
+#### Different Amounts of Ante Placed by Players
+
+Again, we don't consider this a particularly malicious attack. Instead, we design the game so that only the minimum of both player's antes is used. The assumption here is that a player would be willing to bid less than they originally proposed and still play the game. We don't allow for 0 antes since this could open a DoS attack on the contract (since players can only ever participate in one game). We also don't allow negative antes. 
+
+When the player's antes aren't equivalent, we refund the player that over-paid and then begin the game as normal. 
+
+#### How does the contract keep track of ongoing games?
+
+We keep a mapping from player addresses to game ids. This works as long as we assume that each player can only play one game at a time. With this set-up, the contract can allow multiple games to occur at once (as long as no one player is involved in more than one game). Internally, the contract tracks each game by tracking the players' addresses (so it can issue the ante to the winner), the state of the game (eg, INITIALIZING, STARTED, CONTESTED, etc.), as well as the ante put up by the players. 
+
+#### How does the contract prevent cheating during the set-up of the game (eg. a player places less than 10 ships)
+
+The protocol prevents this type of cheating in the following way. Player A, whom is the one to propose the game to the contract, is asked to construct a binding but secret commitment to his board. These binding but secret commitments are simply the merkle root of the merkle tree derived from processing the squares in the board in row-major order as leaves to a merkle tree. We must add a nonce to each square so that the binding commitment is secret (otherwise the opponent could bruteforce our board). Player A is asked to sign this commitment (the merkle root) and must share this commitment with Player B.
+
+Player B *should not* join the game until this binding commitment is signed by Player A and given to Player B. If Player B does join a game without having received the commitment, then the protocol is broken and Player A can change his initial board placement.
+
+However, Player A *should not* provide his commitment immediately to Player B. If he does so, Player B can then join the game without ever providing his commitment to Player A, thereby making it possible for Player B to change his initial battleship placement. As such, Player B *must be the first* player to sign his board commitment and share it with Player A. By doing this, Player A cannot start the game, and as such, he is incentivized to similarly share his commitment with Player B, who will then join the game.
+
+Since by the time the game starts both players have shared their binding commitments, it is infeasible for them to change their initial commitment (without the other player noticing).
+
+During the process of the game, each player will be able to use the commitment as well as the proofs provided by the opponent to verify battleship hits. Once a player has won, he will sign a message "I win" and ask the opponent to similarly sign this messsage. Note that the opponent should provide the signature since this is the only way for him to receive the small part of his ante (for loosing). However, if the player refuses to sign, we do provide a mechanism for the winning player to prove to the contract (using the transcript of moves and the opponents signed board commitment), that he has won. In this case, the opponent receives the entirety of the ante.
+
+## Exchanging Moves
+
+Once the players have initialized their game in the contract, and each have paid their ante, the game is marked as 'STARTED' by the contract. At this point, it is no longer possible to resign an uninitialized game (eg, the contract exposes a function `resigned_uninitialized_game`) which can no longer be called by these players (the transaction will fail).
+
+We now describe the honest play protocol.
+
+In honest play, each player tracks internally a sequence number (eg, the turn number). This value is increased by one each time the a move is completed by a player (eg, either guessing and receiving response or responding to a guess). Let us suppose Player A is making a move. The player guess (i,j) and the seqno are then hashed by Player A, and the resulting hash is signed using Player A's private key. The player then sends his guess, as well as his signature, to the opponent (Player B).
+
+On receiving this guess, the opponent can repeat the hashing process (using his internal seq no) and the provided guess (i,j), and then verify the provided signature matches the resulting hash using Player A's public key. If Player A is honest, his signature will verify successfully and the opponent can then accept this guess as being authoritative from Player A.
+
+Once Player B has verified the signature (and therefore knows this is Player A's move and is in the right sequence), Player B must now respond to Player A. An honest Player B will respond by opening up the board to Player A. He will do this by providing the nonce and state of his board at [i,j], as well as a proof that he did not change this state from the state he originally commited to. Player B will increment his internal sequence number once he's responded to Player A (since he's completed his part of the move).
+
+The proof is simply the Merkle proof, which Player A can use to verify that the given state + nonce combination hashes to the root he received from Player B before the game started. Once Player A has verified, he increments his sequence number since it is now Player B's turn. 
+
+In this way, honest players can exchange moves.
+
+
+### Possible Attacks During Move Exchange
+
+We now discuss some possible attacks that might occur during the move exchange, and how our protocol is designed to mitigate them.
+
+#### Players changing their board states.
+
+We could imagine that it might be beneficial for a player to lie about whether a ship was hit (instead claiming it was not). However, this is infeasible to do. The opposing player has the merkle root of the board state to which the player committed at the start of the game. It's computational infeasible for the player to construct a valid Merkle proof for an invalid state, and as such, if the proof validates, then we know that the player did not lie about the state of the board position.
+
+By using initial commitment (before game start) as well as merkle proofs, we make this attack computationally infeasible. By making use of nonces, we make it so that no state is revealed until the proof is provided (which the opponent only does if the player guessed a particular square). Note that we don't require the opponent to sign the proof, since the proof itself would be computational infeasible to create without having access to the board state of the opponent, which we assume only the opponent can access. As such, a valid proof serves as a signature on the message. We ignore any non-valid proofs, so third-party attacks aren't feasible either.
+
+#### Player "forking" the history by claiming out-of-order moves.
+
+We can imagine an attack where a dishonest player attempts to claim out-of-order moves (for example, they claim to have found all 9 ships as their first nine moves, leaving them with only needing to find 1 more ship).
+
+We address this attack in a rather simple way, by keeping internal track of a move number. For the proposing player, a ``move'' completes once they've sent a guess to the opponent and have received a valid response. For a receiving player, a ``move'' completes once they've received a valid (signed) guess from their opponent and have responded with their proof. We include this internal sequence number with every proposed guess, thereby imposing and absolute order on the guesses. This sequence number is signed (and validated by the opponent) as part of the guess when a player makes one.
+
+In our case, "player1" always makes all guesses with even sequence numbers, and "player2" makes all guesses with odd sequence numbers. Honest players can prevent dishonest player from "cheating" by attempting out-of-order moves by simply verifying that the guesses they receive match the expected internal sequence number. If for some reason the players get out of sync, they can use the contract to resolve (as described later, using the claim_tiomeout functionality). IN this way, we prevent a "forking" attack by dishonest players.
+
+#### Opponent refuses to make a valid move.
+
+As a follow-up to the above, another possible attack (or a situation we can enter on accident), can occur when we are not receiving valid guesses from the opponent (for example, guesses that are out of bounds or guesses that are out of sequence, etc.). This attack might be incentivized if the opponent is about to lose, and would rather keep the ante locked up (than giving it to the winning player). 
+
+
+#### Third-party attacks.
+
+Another form of attack would involve third-party attacks (for example, someone sending guesses who is not our opponent). We address this in our protocol by requiring that every guess be signed by the proposing player, and requiring that honest players only accept guesses with signatures that validate under the opponenets public key. In this way, all guesses can always be guaranteed to come from the players, not from any third-party.
+
+Additionally, this allows use to proof to the contract that players are in agreement as to what transpired. If a player can generate a signed guess from the opponent, it must be the case that the opponent generated that guess and the player is simply forwarding it. In this way, we prevent an dishonest players from generating a false sequence of moves for a game.
+
+
+
 Your design doc doesn't need to be longer than 3 pages. This is a way for you
 to explain your implementation to us to ensure you get the points you deserve.
 In your design doc, you should aim to answer the following questions:

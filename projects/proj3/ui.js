@@ -102,7 +102,10 @@ function enter_battleship_placing_ui() {
      <button id="resign">Resign</button>'
     );
   // setup board submission buttons
+  // unbind first since buttong is bound to finish_game.
+  $('#player1 > .controler > #next-step').unbind();
   $('#player1 > .controler > #next-step').click(() => { start_game('player1', 0); });
+  $('#player2 > .controler > #next-step').unbind();
   $('#player2 > .controler > #next-step').click(() => { start_game('player2', 1); });
   // setup timeout accusation buttons
   $('#player1 > .controler > #timeout').click(() => { accuse_timeout('player1', 0); });
@@ -117,8 +120,10 @@ function leave_battleship_placing_ui(player_name, index) {
   $('#' + player_name + ' .my-board .battleship-board-square').unbind();
   $('#' + player_name + ' .my-board .battleship-board-square').off('hover');
   // setup board submission buttons
+  // Must unbind first since the button is also bound to start_game!
   $('#' + player_name + ' > .controler > #next-step').html('Finish Game');
-  $('#' + player_name + ' > .controler > #next-step').click(() => { finish_game('player1', 0); });
+  $('#' + player_name + ' > .controler > #next-step').unbind();
+  $('#' + player_name + ' > .controler > #next-step').click(() => { finish_game(player_name, index); });
 }
 
 // setup game ui after initial boards have been set

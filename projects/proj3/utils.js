@@ -14,7 +14,8 @@ function parse_my_board(player) {
   $('#' + player + ' .my-board tr').each(function () {
     board.push([]);
     $('td', this).each(function () {
-      board[i].push(($(this).css('background-image') === 'none')? false: true);
+      let background = $(this).css('background-image');
+      board[i].push((background.includes('explosion') || background.includes('boat')) ? true : false);
      });
     i++;
   });
@@ -70,9 +71,8 @@ function build_merkle(initial_board, nonces) {
   for (let i = 0; i < BOARD_LEN; i++) {
     for (let j = 0; j < BOARD_LEN; j++) {
       merkle[0].push(
-        web3.utils.keccak256(
-          web3.utils.fromAscii(JSON.stringify(initial_board[i][j]) + JSON.stringify(nonces[i][j]))
-        )
+        web3.utils.soliditySha3({type: "bool", value: initial_board[i][j]},
+          {type: "uint32", value: nonces[i][j]})
       );
     }
   }
@@ -85,7 +85,7 @@ function build_merkle(initial_board, nonces) {
     // build new layer of tree
     for (let i = 0; i + 1 < merkle[curr_level - 1].length; i += 2) {
       // have new_node represent another node in the Merkle tree
-      let new_node = web3.utils.keccak256(merkle[curr_level - 1][i] + merkle[curr_level - 1][i + 1].substring(2), { encoding: 'hex' });
+      let new_node = web3.utils.soliditySha3(merkle[curr_level - 1][i], merkle[curr_level - 1][i + 1]);
       // finalize finally computes the hash for every argument passed in update
       merkle[curr_level].push(new_node);
     }
@@ -112,12 +112,11 @@ function build_board_commitment(initial_board, nonces) {
   return merkle_tree[merkle_tree.length - 1][0];
 }
 
-/* sign_msg
+/* sign_msg_hash
   signs message - msg - using account specified by my_addr
 */
 function sign_msg(msg, my_addr) {
-  const msg_buf = new ethereumjs.Buffer.Buffer(msg);
-  return web3.eth.sign('0x' + msg_buf.toString('hex'), my_addr);
+   return web3.eth.sign(msg, my_addr);
 }
 
 /* check_signature
@@ -126,29 +125,8 @@ function sign_msg(msg, my_addr) {
     returns false if the msg signature doesn't correspond to addr_of_signatory
 */
 function check_signature(msg, sig, addr_of_signatory) {
-  // cast msg to a Buffer
-  const msg_buf = new ethereumjs.Buffer.Buffer(msg);
-  // get v, r, s values from signature
-  const res = ethereumjs.Util.fromRpcSig(sig);
-  // Geth adds prefix to the message before siginig it in web3.eth.sign
-  // so we need to replicate this directly in order to confirm a signature.
-  const prefix = ethereumjs.Util.toBuffer("\x19Ethereum Signed Message:\n");
-  // append prefix and get sha3
-  const prefixedMsg = ethereumjs.Util.sha3(
-    ethereumjs.Buffer.Buffer.concat(
-      [prefix, 
-      ethereumjs.Util.toBuffer(String(msg_buf.length)),
-      ethereumjs.Util.toBuffer(msg_buf)
-      ])
-  );
-  // find pubkey from given msg signature
-  const pubKey  = ethereumjs.Util.ecrecover(prefixedMsg, res.v, res.r, res.s);
-  // get address from pubkey
-  const addrBuf = ethereumjs.Util.pubToAddress(pubKey);
-  // get addr in hex form
-  const addr = ethereumjs.Util.bufferToHex(addrBuf);
-  // check if this is the passed in addr of the signatory
-  return addr == addr_of_signatory.toLowerCase();
+  const addr = web3.eth.accounts.recover(msg, sig);
+  return addr == addr_of_signatory;
 }
 
 /* check_board_commitment
@@ -190,9 +168,8 @@ function get_proof_for_board_guess(initial_board, nonces, guess) {
     guess - [int, int] - square that opening and nonce correspond to 
 */
 function verify_opening(opening, nonce, proof, commitment, guess) {
-  let curr_commit = web3.utils.keccak256(
-    web3.utils.fromAscii(JSON.stringify(opening) + JSON.stringify(nonce))
-    );
+  let curr_commit = web3.utils.soliditySha3(
+    {type: "bool", value: opening}, {type: "uint32", value: nonce});
   let index_of_guess_in_leaves = guess[0] * BOARD_LEN + guess[1];
   let curr_proof_index = 0;
   let height_of_merkle = Math.log(BOARD_LEN * BOARD_LEN) / Math.log(2);
@@ -208,10 +185,10 @@ function verify_opening(opening, nonce, proof, commitment, guess) {
     let sibling = group_in_level_of_merkle - index_in_group + (index_in_group + 1) % 2;
     if (sibling > max_node_index) continue; // case where node was only hoisted
     if (index_in_group % 2 == 0) {
-      curr_commit = web3.utils.keccak256(curr_commit + proof[curr_proof_index].substring(2), { encoding: 'hex' });
+      curr_commit = web3.utils.soliditySha3(curr_commit, proof[curr_proof_index]);
       curr_proof_index++;
     } else {
-      curr_commit = web3.utils.keccak256(proof[curr_proof_index] + curr_commit.substring(2), { encoding: 'hex' });
+      curr_commit = web3.utils.soliditySha3(proof[curr_proof_index], curr_commit);
       curr_proof_index++;
     }
   }
