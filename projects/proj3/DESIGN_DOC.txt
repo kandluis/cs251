@@ -90,29 +90,54 @@ In our case, "player1" always makes all guesses with even sequence numbers, and 
 
 #### Opponent refuses to make a valid move.
 
-As a follow-up to the above, another possible attack (or a situation we can enter on accident), can occur when we are not receiving valid guesses from the opponent (for example, guesses that are out of bounds or guesses that are out of sequence, etc.). This attack might be incentivized if the opponent is about to lose, and would rather keep the ante locked up (than giving it to the winning player). 
+As a follow-up to the above, another possible attack (or a situation we can enter on accident), can occur when we are not receiving valid guesses from the opponent (for example, guesses that are out of bounds or guesses that are out of sequence, etc.). This attack might be incentivized if the opponent is about to lose, and would rather keep the ante locked up (than giving it to the winning player). In order to address this attack, we provide a mechanism through which the play can move on-chain. If a player suspects that the other player has timed-out or is purposefully delaying their move, the player can request that the contract change the game phase to TIMEOUT. This phase triggers a 1 hour window during which the opponent must respond to the players guess or must provide their own guess.
+
+In more detail, the protocol supports two distinct states of timeout.
+
+The first and easiest to understand occurs with an opponent is not providing a guess. In this case, the player who most recently received a valid response to their guess can easily ask the contract to enter the GUESS Timeout phase. The player has to just proof to the contract that we're at a particular sequence number, which it can and should do by providing it's latest guess as well as the last guess from the opponent (as well as signatures for both). By asking the player to provide a valid signature for the opponent, we can rest assure that the game has progressed up to this point (since it's infeasible for the player requesting the timeout to brute force the signature on behavor of the opponent player).
+
+Once the game has entered this timeout stage, there are only a limited ways to get out. Either opponent can resign, the timed-out player can provide his guess (with valid signature and valid seq no) to the contract, or after 1 hour has passed, the player claiming a timeout can exist the timeout themselves and retrieve the entire ante. In this way, we incentivized the opponent to continue the game promptly. The contract verifies that the provides guess from the opponent is valid before taking the game out of timeout. We assume that the player is monitoring the chain for when the game exist timeout.
+
+The second timeout class occurs when a player has sent a guess but has not received a response for this guess. In this case, the player can ask the contract to enter a timeout phase (1 hour max). The player must provide more information, however. In order to establish a valid seqno, the player provides the latest guess from the opponent (and signature) as well as their own guess and signature. The player must also provides the board commitment from his opponent, as well as his most recent response to the opponents guess. The game will enter a tentative RESPONSE timeout phase if the guess signature validate as well as the opponents board commit (the player must provide the opponents signature).
+
+Note that this phase is tentative. It's entirely possible for a dishonest player to have claimed an invalid/bad response as proof. However, this gets resolved when exiting the timeout (which an honest opponent can quickly rectify in the case where the timeout was invalid). Again, there are three main mechanisms by which the timeout can end. Either the time expires and the original claimant gets the ante, one player resigs, or the opponent resonds to the contract with some information. The first piece of information would be the claimant's board commit and signature on the board commit. This allows the contract to verify whether the claimants response was valid, or if the timed-out player is simply not responding because the response from the claimant was invalid. By having the timed-out player be the one to provide this information, we can guarantee that it is the original, unmodified board-commit. If the response from the timeout claimant validates, then the timed-out player must provide their response to the claimant's guess when calling the contract function. This is the only way they can exit the timeout without forfeiting the game.
+
+In order to prevent attacks where players claim timeouts for previous moves (that have already been made), the contract tracks the highest verified seqno so far. As such, once the contract has received moves for seqno, it's impossible for it to entire a timeout when presented with older moves (since it knows a response has already been sent out previously). This mitigates the attach where an opponent can infinitely claim timeout, but note that it does not resolve attacks where a dishonest player wants to force the entirety of the battleship game to take place on-chain.
 
 
 #### Third-party attacks.
 
 Another form of attack would involve third-party attacks (for example, someone sending guesses who is not our opponent). We address this in our protocol by requiring that every guess be signed by the proposing player, and requiring that honest players only accept guesses with signatures that validate under the opponenets public key. In this way, all guesses can always be guaranteed to come from the players, not from any third-party.
 
-Additionally, this allows use to proof to the contract that players are in agreement as to what transpired. If a player can generate a signed guess from the opponent, it must be the case that the opponent generated that guess and the player is simply forwarding it. In this way, we prevent an dishonest players from generating a false sequence of moves for a game.
+Additionally, this allows use to proof to the contract that players are in agreement as to what transpired. If a player can generate a signed guess from the opponent, it must be the case that the opponent generated that guess and the player is simply forwarding it. In this way, we prevent an dishonest players from generating a false sequence of moves for a game since we always requires moves in pairs (the player's and the opponenets). In a sense, we require 2-of-2 signatures, with the benefit that players are constantly echanging signed messages. 
+
+## Game Conclusion
+
+We now discuss the protocol for game conclusions. A normal game between honest players ends when one of the players has sunk all of the opponents ships. Since this is a turn-based game, there can only be one winner. We now describe how honest players would carry out the game conclusion.
+
+Once an honest player has either had all their ships sunk (or knows they have sunk all the opponent ships), they can reveal their board and board nonces to the opponent. Similarly, the opponent will reveal their board and nonces to the player. Both players will then verify that the provided board matches their initial commitments from the other player (by reconstructing the proof). Finally, the losing player will resign by sending a resignation to the contract. When the contract receives this resignation, it will distribution the funds with a small fee going back to the losing player (to incentivize them claiming they've lost). The majority of the winnings will however go to the winning player.
+
+### Possible End State Attacks
+
+We know discuss a few attacks on the game conclusions.
+
+#### Dishonest Play
+
+One possible attack which we handle during game conclusion (but which has been discussed previously) is the fact that a player could have committed to a board with few or no ships from the beginning. This would highly increase the probability that they are the winners.
+
+However, the protocol provides a recourse for this type of dishonest play. The protocol indicates that honest players must reveal their board to each other, and if they do not, we provide functionality for claiming_end_of_game_timeout which forces the opponent to reveal their initial board state. 
+
+Once the board states have been revealed, it's relatively easy to proof cheating. 
+
+## Future Work and Extensions
+
+It should be possible to implement multi-games relatively easily, by using a slightly more complicated data structure rather than just a mapping. This would allow for a player to play multiple games at once.
+
+Furthermore, implementing the 'claim_end_of_game_timeout' is also relatively straight-forward. A player who is refusing to share their opening board can be placed under this type of time-out by another player since the other player can submit to the contract an entire trascript of moves, showing that the game has ended. The only way to get out of this timeout is for the opponent to reveal their board and nonces to the contract. 
+
+At this point, we can follow our normal protocal for cheat detection.
 
 
+# Conclusion
 
-Your design doc doesn't need to be longer than 3 pages. This is a way for you
-to explain your implementation to us to ensure you get the points you deserve.
-In your design doc, you should aim to answer the following questions:
-
-1. What scheme did you came up with for the communication between two players
-during the game? What pieces of information do users send to one another and
-explain why each are necessary to prevent malicious behaviors.
-
-2. For each of the bullet points from Implementation Requirements section that
-you addressed in your code, what was your strategy in preventing this problem?
-How do you prevent against these attacks?
-
-3. Are there other defenses that you implemented in your code against malicious
-behaviors that weren't mentioned in the spec? Were there any attack scenarios
-that you couldn't defend against?
+In conclusion, we have proposed and implemented an end-to-end novel protocol using off-chain channels in order to play the game of Battleship. For honest game-play, only three transactions total are required. Dishonest players are heavily punished and discentized, and overall the protocal is secure and fair (as argued above). In sum, we have a successful and scalable Battleship game playable on the Etherum block-chain for low-cost.  
