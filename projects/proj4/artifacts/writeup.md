@@ -1,4 +1,4 @@
-Name: []
+Name: [Luis A. Perez]
 
 ## Question 1
 
@@ -13,12 +13,15 @@ signals.
 
 ## Answer 1
 
+It appears that it might be the sum of products of signals, but in fact it is a linear combination of powers of 2 of the input signal bits. As such, this is an appropriate rank-1 constraint. 
 
 ## Question 2
 
 Explain, in your own words, the meaning of the `<==` operator.
 
 ## Answer 2
+
+The `<==` operator is basically a combination of the `<--` and the `===` operators, where we both assing a value to the signal as well as imply that the contract derived from the assignment holds. It's basically just shorhand that allows us to avoid two operators when we're assigning values that are linear combinations of the signals.
 
 
 ## Question 3
@@ -35,4 +38,6 @@ Suppose you're reading a `circom` program and you see the following:
 Explain why this is invalid.
 
 ## Answer 3
+
+This is invalid because the constraint is not simplifiable to the form `a*b + c = 0` (rank-1) due to the & operator.
 
