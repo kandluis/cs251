@@ -75,8 +75,52 @@ Arguments:
  *       path, casted to string-represented integers ("0" or "1").
  */
 function computeInput(depth, transcript, nullifier) {
-    // TODO
-    return {};
+    const tree = new SparseMerkleTree(depth);
+
+    // The commitment corresponding to the given nullifier for which we want
+    // to generate a verification.
+    let input_commitment, input_nonce = [null, null];
+
+    // Add transcript to the tree.
+    for (let i = 0; i < transcript.length; i++) {
+      const commitment_or_info = transcript[i];
+      let commitment = null;
+      if (commitment_or_info.length == 1) {
+        commitment = commitment_or_info[0];
+      } else if (commitment_or_info.length == 2) {
+        const [t_nullifier, nonce] = commitment_or_info;
+        commitment = mimc2(t_nullifier, nonce);
+        if (nullifier == t_nullifier) {
+          if (input_commitment != null) {
+            throw "We should never have duplicates! WTF!!!";
+          }
+          [input_commitment, input_nonce] = [commitment, nonce];
+        }
+      } else {
+        throw "Transcript is invalid + " + str(transcript);
+      }
+      if (commitment == null) {  
+        throw "null commitment!";
+      }
+      tree.insert(commitment);
+    }
+
+    // Retrieve proof for our item.
+    if (input_commitment == null) {
+      throw "nullifier not found in our transcript";
+    }
+    const path = tree.path(input_commitment);
+    const output = {
+      digest: tree.digest,
+      nullifier: nullifier,
+      nonce: input_nonce,
+    };
+    for (let i = 0; i < depth; i++) {
+      let [s, d] = path[i];
+      output['sibling[' + i + ']'] = s.toString();
+      output['direction[' + i + ']'] = (d) ? "1" : "0";
+    }
+    return output;
 }
 
 module.exports = { computeInput };
