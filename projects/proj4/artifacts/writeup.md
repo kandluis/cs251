@@ -13,7 +13,7 @@ signals.
 
 ## Answer 1
 
-It appears that it might be the sum of products of signals, but in fact it is a linear combination of powers of 2 of the input signal bits. As such, this is an appropriate rank-1 constraint. 
+It appears that it might be the sum of products of signals. However, note that `2**i` is not a signal and is instead just a constant value (defined by `i` which depends on `n`). As such, `sum_of_bits` is really just a linear combination of the input signals `bits[i]`.
 
 ## Question 2
 
