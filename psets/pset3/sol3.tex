@@ -1,0 +1,254 @@
+\documentclass[12pt]{exam}
+
+\usepackage[utf8]{inputenc}  % For UTF8 source encoding.
+\usepackage{amsmath}  % For displaying math equations.
+\usepackage{amsfonts} % For mathematical fonts (like \mathbb{E}!).
+\usepackage{upgreek}  % For upright Greek letters, such as \upvarphi.
+\usepackage{wasysym}  % For additional glyphs (like \smiley!).
+\usepackage{mathrsfs} % For script text (hash families and universes).
+\usepackage{enumitem}
+\usepackage{graphicx}
+% For document margins.
+\usepackage[left=.8in, right=.8in, top=1in, bottom=1in]{geometry}
+\usepackage{lastpage} % For a reference to the number of pages.
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{pdfpages}
+
+% TODO: Enter your name here :)
+\newcommand*{\authorname}{Luis A. Perez}
+
+\newcommand*{\duedate}{Wednesday, Dec 4th}
+\newcommand*{\duetime}{11:59 pm}
+
+% Fancy headers and footers
+\headrule
+\firstpageheader{CS 251}{Assignment 3 \\ }{Due: \duedate\\at \duetime}
+\runningheader{CS 251}{Assignment 3}{\authorname}
+\footer{}{\footnotesize{Page \thepage\ of \pageref{LastPage}}}{}
+
+% Exam questions.
+\newcommand{\Q}[1]{\question{\large{\textbf{#1}}}}
+\qformat{}  % Remove formatting from exam questions.
+
+% Useful macro commands.
+\newcommand*{\bigtheta}[1]{\Theta\left( #1 \right)}
+\newcommand*{\bigo}[1]{O \left( #1 \right)}
+\newcommand*{\bigomega}[1]{\Omega \left( #1 \right)}
+\newcommand*{\prob}[1]{\text{Pr} \left[ #1 \right]}
+\newcommand*{\ex}[1]{\text{E} \left[ #1 \right]}
+\newcommand*{\var}[1]{\text{Var} \left[ #1 \right]}
+
+\newcommand*{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand*{\HH}{\mathscr{H}}   % Family of hash functions.
+\newcommand*{\UU}{\mathscr{U}}   % Universe.
+\newcommand*{\eps}{\varepsilon}  % Epsilon.
+
+
+% Custom formatting for problem parts.
+\renewcommand{\thepartno}{\roman{partno}}
+\renewcommand{\partlabel}{\thepartno.}
+
+% Framed answers.
+\newcommand{\answerbox}[1]{
+\begin{framed}
+\hspace{\fill}
+\vspace{#1}
+\end{framed}}
+
+\printanswers
+
+\setlength\answerlinelength{2in} \setlength\answerskip{0.3in}
+
+\begin{document}
+\title{CS 251 Assignment 3}
+\author{\authorname}
+\date{}
+\maketitle
+\thispagestyle{headandfoot}
+\setcounter{MaxMatrixCols}{15}
+
+\begin{questions}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\Q{Problem 1. Idioms of use.}
+\begin{solution}
+  \begin{enumerate}[label=\textbf{\alph*.}]
+    \item Yes, an observer can identify the payee in transactions (1) quite easily. We can see that in transaction (1), Bob paid a single individual, creating a UTXO (we know this because we've identified the other output as a change address). This unidentified UTXO is later used, so we know that Bob must have paid Alice. Only Alice can spend her own change UTXO, so we know that Alice must have signed this transaction. As such, the unidentified UTXO must have belonged to Alice, which means Bob paid Alice in transaction (1).
+
+    \item It is hard to determine the identity of who paid Carol because of the fact that the previous transaction has multiple input addresses and multiple outputs (CoinJoin transaction). Because of this, it is no longer clear which inputs made their way to which outputs, and as such, we've lost information about whoever paid Carol.
+  \end{enumerate}
+\end{solution}
+
+\Q{Problem 2. Vulnerable 3-party payment channel.}
+\begin{solution}
+  TODO
+\end{solution}
+
+\newpage
+\Q{Problem 3}
+\begin{solution}
+  The Ethereum re-entrancy attack can occur when a contract (contract A) makes a call to another address (B) before it's own execution is complete, and in particular, before its own state has been updated to reflect the changes it wants to make. The attach involves the contract at address B re-entering the same function in contract A (before the original call has completed).
+
+  This can lead to a loss of funds in the following way. Suppose A has a function which is meant to withdraw a certain amount of funds from the contract, and send them to B. If A sends the funds to B before its local state is updated (eg, before it marks the funds as withdrawn), the sending of the funds can be intercepted by B and B can request another withdraw, before the first completes. As such, contract A will again withdraw the same funds and send them to B. This is an example of re-entrancy being abused and leading to a loss of funds.
+
+  This attack can be prevented by making sure that any calls to external addresses occur only *after* their relevant state have been updated in the contract code.
+\end{solution}
+
+\newpage
+\Q{Problem 4}
+\begin{solution}
+  \begin{enumerate}[label=\textbf{\alph*.}]
+    \item As per the problem statement, we let $C_M(\lambda, \textbf{v})$ be an arithmetic circuit that outputs $0 \in \mathbb{F}$ if and only if $M\textbf{v} = \lambda \textbf{v}$ where $\textbf{v} \neq 0$.
+
+    We know propose a linear PCP $(P, V_1, V_2)$ for $C_M$ as follows. We note that the prover $P$ will output the proof:
+      \[
+        \pi = \textbf{v}
+      \]
+    \begin{itemize}
+      \item 
+
+      \textbf{How $V_1$ issues the queries:}
+
+      Following the hint, $V_1$ will chose a random vector $\textbf{r} \in \mathbb{F}^n$ such that $\textbf{r}^T \pi \neq 0$ and $\textbf{r} \neq 0$ (this is critical for the proof to work). It will then compute $\textbf{u} = \textbf{r}^TM \in \mathbb{F}^n$ and issue $\textbf{u}$ as its first linear query. It's second linear query will be $\textbf{r}$.
+
+      \textbf{How $V_2$ decides the output}
+
+      $V_2$ first receives $a_u = \langle \textbf{u}, \pi \rangle \in \mathbb{F}$ and $a_r = \langle \textbf{r}, \pi \rangle \in \mathbb{F}$. $V_2$ then compares $a_u$ to $\lambda \cdot a_r$, and it outputs \textit{yes} if the values are equal. Otherwise, it outputs \textit{no}. Note that this requires $V_2$ to compute a constant number of arithmetic and comparison operations, independent of $n$.
+
+      \item 
+
+      We now prove that with the above set-up, a malicious prover will not be able to fool the verifier. That is to say, if the prover has a $\textbf{v}$ such that $M\textbf{v}= \lambda \textbf{v} + \Delta$ where $\Delta \neq 0$, then the probability of acceptance is bounded by $\frac{1}{|\mathbb{F}|}$. 
+
+      \begin{align*}
+        \Pr[V_2(a_u, a_r) = yes] &= \Pr[a_u = \lambda \cdot a_r] \tag{By definition of $V_2$} \\
+        &= \Pr[(\textbf{u}^T \pi) = \lambda \cdot (\textbf{r}^T \pi)] \tag{Definition of $a_u$ and $a_r$} \\
+        &= \Pr[(\textbf{r}^TM\textbf{v})  = \lambda \cdot (\textbf{r}^T \textbf{v})] \tag{Definitions of $\pi$ and $\textbf{r}^T$ as per $P$ and $V_1$} \\
+        &= \Pr[r^T(\lambda \textbf{v} + \Delta) = \lambda \cdot (\textbf{r}^T \textbf{v})] \tag{Properties of $M$ and $\textbf{v}$} \\
+        &= \Pr[\lambda \cdot (\textbf{r}^T\textbf{v}) + (\textbf{r}^T\Delta) = \lambda \cdot (\textbf{r}^T \textbf{v})] \tag{Distribute results} \\
+        &= \Pr[r^T\Delta = 0] \\
+        &\leq \frac{1}{|\mathbb{F}|} 
+      \end{align*}
+      The last line is due to the fact that $\Delta \neq 0$ and $\textbf{r} \neq 0$. As such, the probability of $r^T\Delta = 0$ is given by at most $\frac{1}{||\mathbb{F}}$.
+    \end{itemize}
+    \item We now describe how to convert the above linear PCP into a pre-processing SNARK $(S, P, V)$ for $C_M(\lambda, v)$ using linear-only encodings. We begin by describing how each of the algorithms $S(M) \rightarrow (S_P, S_V), P(S_P, \textbf{x}, \textbf{w}) = P(S_P, (M, \lambda), \textbf{v}) \rightarrow \pi$ and $V(S_V, \textbf{x}, \pi) = V(S_V, \lambda, \pi) \rightarrow \{\textit{yes}, \textit{no}\}$.
+    \begin{itemize}
+      \item The setup algorithm, $S(M) \rightarrow (S_P, S_V)$.
+
+        The first step for the setup algorithm is to run the $\textit{Gen}(\Lambda)$ producing $pk$ (the public key) and $C$ (the encoding space) for our linear-only encoding. Both of these will become public (accessible to everyone).
+        
+        We then chose a secret random $\textbf{r} \in \mathbb{F}^n$, and compute $\textbf{u} = r^TM \in \mathbb{F}^n$. We also chose random $\alpha, \beta \in \mathbb{F}$ values. 
+
+        We now encode the above values. Note that $\textit{Enc}(pk, \textbf{x})$ where $\textbf{x} \in \mathbb{F}^n$ means that we simply construct the vector where each element is the encoded version of each element in \textbf{x}. As such, we have the following:
+
+        \begin{align*}
+          S_P \leftarrow \left(\textit{Enc}(pk, \textbf{u}), \textit{Enc}(pk, \textbf{r}), \textit{Enc}\left(pk, \begin{bmatrix} \alpha \\ \beta \end{bmatrix}\right)\right) \\
+          S_V \leftarrow \left( \textit{Enc}\left(pk, \begin{bmatrix} \alpha \\ \beta \end{bmatrix} \right) \right)
+        \end{align*}
+        These are the final outputs of our algorithm, to be provided to the prover and verifier.
+
+      \item The prover, $P(S_P, (M, \lambda), \textbf{v})$.
+
+      The prover is given $\textit{Enc}(pk, \textbf{u})$ and $\textit{Enc}(pk, \textbf{r})$, so by the fact that we're using a linear-only encoding, it can and does compute:
+      \begin{align*}
+        [a_u] &= \textit{Enc}(pk, \langle \textbf{u}, \textbf{v} \rangle) \\
+        [a_r] &= \textit{Enc}(pk, \langle \textbf{r}, \textbf{v} \rangle)
+      \end{align*}
+      Note that this is possible because $\langle \textbf{u}, \textbf{v} \rangle = \sum_{i=1}^n u_i v_i$ which is just a linear transformation. As such, even though the prover does not know the values $\textbf{u}, \textbf{r}$, since it knows its encodings, it can compute the encoding of the linear combinations of the vector entries. More specifically, this can be done by repeated applications of the \textit{Add} primitive which allows us to compute the encoding of the result of the sum of two values with just their encodings.
+
+      Finally, the prover also computes the following (to proof that it used the samve $\textbf{v}$ always):
+      \begin{align*}
+        [d] = \textit{Enc}(pk, \langle \alpha \textbf{u} + \beta \textbf{r}, \textbf{v} \rangle)
+      \end{align*}
+      Again, since the above is ultimately just a linear combination of encoded values, the encoding is computable by just knowing the encoding of those values, and not the values themselves.
+
+      The prover will final output the proof $\pi$ as:
+      \[
+        \pi = ([a_u], [a_r], [d])
+      \]
+      \item The verifiers, $V(S_V, \lambda, \pi)$.
+
+      The verifier wants to check that $a_u = \lambda a_r$ and that $d = \alpha a_u + \beta a_r$. Thankfully, given that we're using a linear-only encoding, these checks can all be performed by using $\textit{QuadTest}$. We recall that $\textit{QuadTest}(pk, (\textbf{c}_1, \textbf{c}_2, \textbf{c}_3), \eta) \rightarrow \{0,1 \}$ outputs $1$ if and only if $\textbf{c}_i[j] = \textit{Enc}(pk, \textbf{x}_i[j])$ and $\langle \textbf{x}_1, \textbf{x}_2 \rangle = \langle \eta,\textbf{x}_3 \rangle$.
+
+      As such, the first thing the verifier checks is that $\textit{Verify}(pk, \pi)$ and $\textit{Verify}(pk, S_V)$ each return 1 (meaning that all of the input encodings are indeed valid encodings under the given $pk$).
+
+      Next, the verifier checks that:
+      \[
+        \textit{QuadTest}(pk, ([1], [a_u], [a_r]), \lambda) == 1
+      \]
+      This checks that $a_u = \lambda a_r$ (note that $[1] = \textit{Enc}(pk, 1)$ where $1$ is the multiplicative identity in $\mathbb{F}$).
+
+      Then, to make sure that the prover used the same $\textbf{v}$ for each of the queries, we check the following holds:
+      \[
+        \textit{QuadTest}\left(pk, \left( \begin{pmatrix} [\alpha] \\ [\beta] \end{pmatrix},  \begin{pmatrix} [a_u] \\ [a_r] \end{pmatrix} , [d]\right), 1 \right) == 1
+      \]
+      which simply serves to check that $\alpha a_u + \beta a_r == d$, implying that the same $v$ was used by the prover with high probability.
+
+      If all of the above checks pass, the verifier outputs $1$. Otherwise, we output $0$.
+
+
+      \item We now make our linear PCP desinged in (a) honest-verifier zero-knowledge (HVZK). To do this, we first expand the proof $\pi$ to:
+      \[
+        \tilde{\pi} = (s, \textbf{v}) \in \mathbb{F}^{n+1}
+      \] 
+      where $s$ is chosen at random by the prover. We also expand the queries issued by $V_1$ as follows:
+      \begin{align*}
+        \tilde{\textbf{u}} = (\lambda, \textbf{u}) \in \mathbb{F}^{n+1} \\
+        \tilde{\textbf{r}} = (1, \textbf{r}) \in \mathbb{F}^{n+1}
+      \end{align*}
+      As such, $V_2$ will now receive the query responses $\tilde{a}_u = \langle \tilde{\textbf{u}}, \tilde{\pi} \rangle \in \mathbb{F} $ and $\tilde{a}_r = \langle \tilde{\textbf{r}}, \tilde{\pi} \rangle  \in \mathbb{F}$. It then proceeds to check whether $\tilde{a}_u = \lambda \tilde{a}_r$, and if so, outputs $1$. Otherwise, outputs $0$. To see why this works, simply note the following (assuming honest prover):
+      \begin{align*}
+        \tilde{a}_u &= \tilde{\textbf{u}}^T\tilde{\pi} = s \lambda + \textbf{u}^T\textbf{v} = s\lambda + \textbf{r}^TM\textbf{v} = (s + \textbf{r}^T\textbf{v})\lambda \\
+        \lambda \tilde{a}_r &= \lambda \tilde{\textbf{r}}^T \tilde{\pi} = \lambda(s + \textbf{r}^T\textbf{v})
+      \end{align*}
+      As such, a similar proof as that given in (a) leads to the probabilistic argument that this is the appropriate check to make, and that the verifier can only be fooled with at most probability $\frac{1}{|\mathbb{F}|}$ (even by a malicious prover).
+
+
+      We now prove that the proposed modification makes our linear PCP HVZK. We do this by constructing a fast simulator $\textit{Sim}(M, \lambda)$ that outputs a tuple $(\tilde{\textbf{u}}, \tilde{\textbf{r}}, \tilde{a}_u, \tilde{a}_r)$ that is distributed indistinguishibly from the real protocol. The tuple is constructed as follows:
+      \begin{align*}
+        \tilde{\textbf{r}} &= (1, \textbf{r}) \tag{Where $\textbf{r} \in \mathbb{F}^n$ is sampled at random} \\
+        \tilde{\textbf{u}} &= (\lambda, \textbf{u}) \tag{Where $\textbf{u} = \textbf{r}^TM$} \\
+        \tilde{a}_r &= s \tag{Where $s \in \mathbb{F}$ is sampled uniformly at random} \\
+        \tilde{a}_u &= \lambda \tilde{a}_r 
+      \end{align*}
+      From the above, it's clear that the $\tilde{\textbf{r}}$ and $\tilde{\textbf{u}}$ are indistinguishable from the real protocol (they are, in fact, computed in the exact same way as in the real protocol). As for $\tilde{a}_r$, note that this is indistinguishable from the real protocol since in the real protocol we have a uniformly random number added to the product of $\textbf{r}^T\textbf{v}$, which means the resulting value is uniformly random. Similarly, the distribution of $\tilde{a}_u$ is indistinguishable since it satisfies the property that $a_u = \lambda a_r$.
+
+      As such, as we can see above, the running time of this simulator is entirely dominated by the computation of $\textbf{u} = \textbf{r}^T M$. As such, this simulator is fast which demonstrates that our new protocol is HVZK.
+    \end{itemize}
+  \end{enumerate}
+\end{solution}
+
+
+\newpage
+\Q{Problem 4}
+\begin{solution}
+\begin{enumerate}[label=\textbf{\alph*.}]
+  \item An attacker can easily exploit this error to make money. For example, an attacker could purchase $\$150$ USD worth of ether, and the lock this ether into a CDP and withdraw dai. Since the oracle mistakenly believe the price of either is $\$1000$ USD rather than $\$100$ USD, the attacker will be allowed to withdraw up to $\$ 1000$ USD worth of dai (150\% max ceiling). If the market for dai has not yet collapsed, the attacker can then exchange this for $\$1000$ USD. Once the error is corrected (and the price of ether reverts to $100$), the attacker can pay down the debt in the CDP by simply sending $\$150$ US worth of dai to the contract, thereby paying down the entire.
+
+  \item Assuming the MakerDAO is not destroyed, the losses from such an attack would be bared by the holders of the MKR token. Such an attack would cause a depreciation in the value of Dai, leading to it under-tracking its target value. In this situation, the MKR tokens are used to purchase Dai thereby decreasing the supply and increasing the value. The holder of the MKR token would therefore bare the losses caused by such an attack.
+\end{enumerate}
+\end{solution}
+
+\end{questions}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
