@@ -13,6 +13,7 @@
 \usepackage{lastpage} % For a reference to the number of pages.
 \usepackage[table,xcdraw]{xcolor}
 \usepackage{pdfpages}
+\usepackage{hyperref}
 
 % TODO: Enter your name here :)
 \newcommand*{\authorname}{Luis A. Perez}
@@ -78,9 +79,54 @@
   \end{enumerate}
 \end{solution}
 
+\newpage
 \Q{Problem 2. Vulnerable 3-party payment channel.}
 \begin{solution}
-  TODO
+  Given the lack of clarification in this problem, we now clarify exactly what is being proposed. Specifically, the way the 3-way payment channel works is presented below. This is based on collecting information in Piazza:
+
+  From @654 in Piazza:
+  
+  Assume that we have the following payment scheme which is a generalization of the non-expiring payment channel from \href{http://cs251.stanford.edu/lectures/CS251Scaling1.pdf}{class}:
+
+  A creates a transaction that places some amount of money (say $z$ bitcoins) into an escrow UTXO which is locked with a 3 of 3 multisig. A doesn't post this transaction yet though. First A also creates another transaction that refunds the entire escrow to herself and has both B and C sign it. (this refund is locked with some timelock or can be taken immediately by either B or C given knowledge of some preimage of a hash $x_0$). A doesn't sign it herself yet. Specifically, the TX has the UTXO outputs as:
+  \begin{itemize}
+      \item Refund UTXO with script pk: Alice can redeem in 48 hours, or B / C can claim immediately with preimage of $H(x_0)$
+      \item Payment UTXO with script pk: P2PKH for Bob
+      \item Payment UTXO with script pk: P2PKH for Carol
+    \end{itemize}
+  
+  Then A posts the escrow and A can start making payments to B and C.
+
+  To make a payment (to say B for 1 bitcoin) A selects some new preimage $x_1$ and creates a $tx_1$:
+  \begin{itemize}
+    \item Refund: Alice can redeen in 48 hours $z-1$ BTC, or B/C can claim immediately with preimage of $H(x_1)$.
+    \item Pay B $1$ btc.
+    \item pay C $0$ btc.
+  \end{itemize}
+  A doesn't sign this tx1 yet. A instead sends it to both B and C. They sign it and they send their signatures back. Once A receives whatever good she bought from B, A sends B and C $x0$, the most recent preimage which pretty much voids the previous most recent tx.
+
+  At any time A can decide to settle by posting the most recent tx. If A posts any other transaction then B or C can post the preimage for that tx and take all the money that was meant to go back to A.
+
+  With the above description out of the way (and a clear understanding of the set-up), we now explain how two colluding parties can steal funds from the third. 
+
+  Note that following the above protocol, at timestep $t$ there are three transactions which have not been invalidated. Let us suppose the account balances for A,B,C are $\{a_t,b_t,c_t\}$ respectively. Then the 3 transactions looks as follows.:
+  \begin{itemize}
+    \item $TXA_t$: Pay $a_t$ coins to A in 48 hours or B/C given pre-image of $x_t$. Pay $B$ $b_t$ coins and pay $C$ $c_t$ coins.
+    \item $TXB_t$: Pay $b_t$ coins to B in 48 hours or A/C given pre-image of $y_t$. Pay $A$ $a_t$ coins and pay $C$ $c_t$ coins.
+    \item $TXC_t$: Pay $c_t$ coins to C in 48 hours or A/B given pre-image of $z_t$. Pay $A$ $a_t$ coins and pay $B$ $b_t$ coins.
+  \end{itemize}
+  After some internal transactions, we are now at state $t+k$, and we have the balances $\{a_{t+k}, b_{t+k}, c_{t+k}\}$, and similary, $TXA_{t+k},TXB_{t+k}$, and $TXC_{t+k}$. Let us suppose we're in a situation where $a_{t+k} < a_t$ and $b_{t+k} < b_t$ (both A and B, in net, have paids funds to C).
+
+  Note that the above implies that $x_t$ and $y_t$ have both been reveleaed at some point, supposedly ``invalidating'' $TXA_t$ and $TXB_t$. However, note that at state $t+k$ both A and B are worse off than they were at state $t$. This means that $A$ and $B$ are both now incentivized to somehow ``settle'' the channel at an earlier points.
+
+
+  WLOG, to do this, suppose that $A$ talks to $B$ and proposes that he is willing to submit $TXA_t$ if $B$ promises to claim the funds (instead of $C$) and gives these claimed funds to $A$. If this succeeds, then A and B will both end-up with more money than the current state, so B is incentivized to play along (there is some concern that $B$ would steal the funds and keep them to himself, but if $A$ does not trust $B$, he/she can simply not submit $TXA_t$). However, if they do successfully trust each other, let us analyze the result.
+
+  Without informing $C$, $A$ submits $TXA_t$ to the block-chain, and immediately, $B$ claims both $a_t + b_t$ coins, leaving $c_t$ coins for $C$ (note that $c_t < c_{t+k}$). $B$ then gives $a_t$ coins to $A$ offline, as payment for the collusion.
+
+  In this way, A and B have now colluded to steal funds from C, since they have ``closed'' the payment channel at an earlier, `invalid' state.
+
+  This attack is preventable if C is constantly monitoring the block-chain, but even then, it will succeed with $50\%$ probability (eg, even when $C$ and $B$ both submits claims, the block chain will arbitrarily pick a winner).
 \end{solution}
 
 \newpage
@@ -218,7 +264,7 @@
 
 
 \newpage
-\Q{Problem 4}
+\Q{Problem 5}
 \begin{solution}
 \begin{enumerate}[label=\textbf{\alph*.}]
   \item An attacker can easily exploit this error to make money. For example, an attacker could purchase $\$150$ USD worth of ether, and the lock this ether into a CDP and withdraw dai. Since the oracle mistakenly believe the price of either is $\$1000$ USD rather than $\$100$ USD, the attacker will be allowed to withdraw up to $\$ 1000$ USD worth of dai (150\% max ceiling). If the market for dai has not yet collapsed, the attacker can then exchange this for $\$1000$ USD. Once the error is corrected (and the price of ether reverts to $100$), the attacker can pay down the debt in the CDP by simply sending $\$150$ US worth of dai to the contract, thereby paying down the entire.
