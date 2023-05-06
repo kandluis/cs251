@@ -14,7 +14,7 @@
     "docopt": "^0.6.2",
     "circom": "alex-ozdemir/circom#cs251",
     "snarkjs": "^0.1.11",
-    "mocha": "^5.2.0",
+    "mocha": "^10.2.0",
     "chai": "^4.1.0",
     "big-integer": "^1.6.47"
   }
